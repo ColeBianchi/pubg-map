@@ -5,7 +5,7 @@ var io = require('socket.io')(server);
 
 app.use(express.static('.'));
 
-server.listen(80, function ()
+server.listen(process.env.PORT, function ()
 {
 	console.log('PUBG Map Started!');
 });
