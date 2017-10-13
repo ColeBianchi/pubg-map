@@ -1,0 +1,377 @@
+<!DOCTYPE html>
+<html>
+<head>
+	<title>PUBG Map By Ravius</title>
+	<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/materialize/0.100.2/css/materialize.min.css">
+	<style>
+		body
+		{
+			height: 100%;
+			width: 100%;
+			margin: 0;
+			overflow: hidden;
+		}
+
+		.map
+		{
+			height: 100%;
+			border: 0;
+			margin: 0;
+		}
+
+		.container
+		{
+			margin: 0;
+			width: 100%;
+			max-width: 100%;
+		}
+
+		.colorpreview
+		{
+			margin: 5px;
+		}
+
+		td
+		{
+			padding: 5px;
+		}
+	</style>
+</head>
+<body class="blue-grey darken-4">
+	<div class="container">
+		<div class="row">
+			<div class="col s7">
+				<canvas id="map" class="map"></canvas>
+			</div>
+			<div class="col s5">
+				<div class="row">
+					<h1 class="blue-grey-text text-lighten-5">PUBG Group Map</h1>
+					<h4 class="blue-grey-text text-lighten-5"><a href="http://steamcommunity.com/id/RaviusSky">By Ravius</a></h4>
+				</div>
+				<div class="row">
+					<div class="col s6">
+						<div class="card blue-grey darken-1">
+							<div class="card-content white-text">
+								<span class="card-title">Select Color</span>
+								<div class="colorpreview" id="colorpreviewcontainer"><canvas id="color"></canvas></div>
+							</div>
+							<div class="card-action">
+								<form action="#">
+									<p class="range-field" id="sred">
+										<input type="range" id="red" min="0" max="255" />
+									</p>
+								</form>
+								<form action="#">
+									<p class="range-field" id="sgreen">
+										<input type="range" id="green"  min="0" max="255" />
+									</p>
+								</form>
+								<form action="#">
+									<p class="range-field" id="sblue">
+										<input type="range" id="blue" min="0" max="255" />
+									</p>
+								</form>
+							</div>
+						</div>
+						<div class="card blue-grey darken-1">
+							<div class="card-content white-text">
+								<span class="card-title">Enter Name</span>
+							</div>
+							<div class="card-action">
+								<div class="input-field">
+									<input id="name" type="text" class="validate white-text">
+									<label for="name">Name</label>
+								</div>
+							</div>
+						</div>
+					</div>
+					<div class="col s5">
+						<div class="card blue-grey darken-1">
+							<div class="card-content white-text">
+								<table>
+									<thead>
+										<tr>
+											<th>Active Users</th>
+										</tr>
+									</thead>
+									<tbody id="online"></tbody>
+								</table>
+							</div>
+						</div>
+					</div>
+				</div>
+			</div>
+		</div>
+	</div>
+	
+
+	<script src="https://ajax.googleapis.com/ajax/libs/jquery/3.2.1/jquery.min.js"></script>
+	<script src="https://cdnjs.cloudflare.com/ajax/libs/materialize/0.100.2/js/materialize.min.js"></script>
+	<script src="/node_modules/socket.io-client/dist/socket.io.js"></script>
+	<script>
+		var io = io();
+
+		var lx = -1;
+		var ly = -1;
+		var r = Math.floor((Math.random() * 255));
+		var g = Math.floor((Math.random() * 255));;
+		var b = Math.floor((Math.random() * 255));;
+		var n = "New User";
+		var img = new Image();
+		img.src = 'pubgmap1000.jpg';
+
+		$(document).ready(function()
+		{
+			drawMap();
+			drawColor();
+
+			document.getElementById("red").value = r;
+			document.getElementById("green").value = g;
+			document.getElementById("blue").value = b;
+
+			$('input[type=range]').on('input', function () 
+			{
+				$(this).trigger('change');
+				r = document.getElementById("red").value;
+				g = document.getElementById("green").value;
+				b = document.getElementById("blue").value;
+				updateColor();
+
+				if (lx != -1)
+				{
+					var data = 
+					{
+						name: n,
+						color: getHexCode(r,g,b),
+						cords: 
+						{
+							x: lx,
+							y: ly
+						}
+					};
+
+					io.emit("point", data);
+				}
+			});
+
+			var color_canvas = document.getElementById('color');
+
+			function updateColor()
+			{
+				color_canvas = document.getElementById('color');
+				color_canvas = color_canvas.getContext('2d');
+				color_canvas.fillStyle = getHexCode(r,g,b);
+				color_canvas.fillRect(0,0,500,500);
+			}
+
+			$('#name').on('input',function(e)
+			{
+				n = document.getElementById("name").value;
+
+				if (n == "")
+				{
+					n = "New User"
+				}
+
+				if (lx != -1)
+				{
+					var data = 
+					{
+						name: n,
+						color: getHexCode(r,g,b),
+						cords: 
+						{
+							x: lx,
+							y: ly
+						}
+					};
+
+					io.emit("point", data);
+				}
+			});
+
+			var map_canvas = document.getElementById('map');
+
+			map_canvas.addEventListener('mouseup', function(e)
+			{
+				var xpos = e.clientX - map_canvas.getBoundingClientRect().left;
+				var ypos = e.clientY - map_canvas.getBoundingClientRect().top;
+
+				lx = xpos;
+				ly = ypos;
+
+				var data = 
+				{
+					name: n,
+					color: getHexCode(r,g,b),
+					cords: 
+					{
+						x: xpos,
+						y: ypos
+					}
+				};
+
+				io.emit("point",data);
+			});
+
+			document.getElementById("sred").childNodes[2].style.backgroundColor = "#f44336";
+			document.getElementById("sgreen").childNodes[2].style.backgroundColor = "#4caf50";
+			document.getElementById("sblue").childNodes[2].style.backgroundColor = "#03a9f4";
+		});
+
+		function getHexCode(red,green,blue)
+		{
+			var hex = "";
+
+			var hr = parseInt(red).toString(16);
+			var hg = parseInt(green).toString(16);
+			var hb = parseInt(blue).toString(16);
+
+			if (hr.length == 1)
+			{
+				hr = "0"+hr;
+			}
+
+			if (hg.length == 1)
+			{
+				hg = "0"+hg;
+			}
+
+			if (hb.length == 1)
+			{
+				hb = "0"+hb;
+			}
+
+			hex = "#"+hr+hg+hb;
+
+			return hex;
+		}
+
+		function drawColor()
+		{
+			var ctx = document.getElementById('color');
+
+			if (ctx.getContext)
+			{
+				ctx = ctx.getContext('2d');
+
+				ctx.canvas.width = document.getElementById("colorpreviewcontainer").offsetWidth;
+				ctx.canvas.height = document.getElementById("colorpreviewcontainer").offsetHeight;
+				ctx.fillStyle = getHexCode(r,g,b);
+				ctx.fillRect(0,0,1000,1000);
+			}
+		}
+
+		function drawMap()
+		{
+			var ctx = document.getElementById('map');
+
+			if (ctx.getContext)
+			{
+				ctx = ctx.getContext('2d');
+
+				ctx.canvas.width = 1000;
+				ctx.canvas.height = 1000;
+
+				img.onload = function()
+				{
+					drawImageProp(ctx, img, 0, 0, 1000, 1000, 0, 0);
+				}
+			}
+		}
+
+		function drawImageProp(ctx, img, x, y, w, h, offsetX, offsetY) 
+		{
+			if (arguments.length === 2) 
+			{
+				x = y = 0;
+				w = ctx.canvas.width;
+				h = ctx.canvas.height;
+			}
+
+			// default offset is center
+			offsetX = typeof offsetX === "number" ? offsetX : 0.5;
+			offsetY = typeof offsetY === "number" ? offsetY : 0.5;
+
+			// keep bounds [0.0, 1.0]
+			if (offsetX < 0) offsetX = 0;
+			if (offsetY < 0) offsetY = 0;
+			if (offsetX > 1) offsetX = 1;
+			if (offsetY > 1) offsetY = 1;
+
+			var iw = img.width,
+			ih = img.height,
+			r = Math.min(w / iw, h / ih),
+			nw = iw * r,   // new prop. width
+			nh = ih * r,   // new prop. height
+			cx, cy, cw, ch, ar = 1;
+
+			// decide which gap to fill    
+			if (nw < w) ar = w / nw;                             
+			if (Math.abs(ar - 1) < 1e-14 && nh < h) ar = h / nh;  // updated
+			nw *= ar;
+			nh *= ar;
+
+			// calc source rectangle
+			cw = iw / (nw / w);
+			ch = ih / (nh / h);
+
+			cx = (iw - cw) * offsetX;
+			cy = (ih - ch) * offsetY;
+
+			// make sure source rectangle is valid
+			if (cx < 0) cx = 0;
+			if (cy < 0) cy = 0;
+			if (cw > iw) cw = iw;
+			if (ch > ih) ch = ih;
+
+			// fill image in dest. rectangle
+			ctx.drawImage(img, cx, cy, cw, ch,  x, y, w, h);
+		}
+
+		io.on("log", function(data)
+		{
+			console.log(data);
+		});
+
+		io.on("map_update", function(data)
+		{
+			var ctx = document.getElementById('map');
+
+			ctx = ctx.getContext('2d');
+
+			drawImageProp(ctx, img, 0, 0, 1000, 1000, 0, 0);
+			
+			document.getElementById("online").innerHTML = "";
+
+			for (var i = 0; i < data.length; i++)
+			{
+				console.log(data[i]);
+
+				ctx.fillStyle = data[i].point.color;
+				ctx.strokeStyle = data[i].point.color;
+				ctx.beginPath();
+				ctx.moveTo(data[i].point.cords.x, data[i].point.cords.y);
+				ctx.lineTo(data[i].point.cords.x-6, data[i].point.cords.y-12);
+				ctx.lineTo(data[i].point.cords.x+6, data[i].point.cords.y-12);
+				ctx.lineTo(data[i].point.cords.x, data[i].point.cords.y);
+				ctx.fill();
+				ctx.beginPath();
+				ctx.arc(data[i].point.cords.x, data[i].point.cords.y-13, 6, 0, Math.PI*2, true);
+				ctx.fill();
+
+				document.getElementById("online").innerHTML += '<tr><td><div class="chip"><canvas style="border-radius: 20px; margin-top:6px" id="'+data[i].sid+'" width="20px" height="20px"></canvas> '+data[i].point.name+'</div></td></tr>';
+			}
+
+			for (var i = 0; i < data.length; i++)
+			{
+				var color_tag = document.getElementById(data[i].sid).getContext('2d');
+
+				color_tag.fillStyle = data[i].point.color;
+				color_tag.fillRect(0,0,20,20);
+			}
+		});
+
+	</script>
+</body>
+</html>
