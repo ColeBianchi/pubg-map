@@ -5,19 +5,32 @@ var io = require('socket.io')(server);
 
 app.use(express.static('.'));
 
-server.listen(process.env.PORT, function ()
+console.log(process.env.PORT)
+
+var port = process.env.PORT;
+
+if (port === undefined)
+{
+	port = 80
+}
+
+console.log("Selecting port "+port)
+
+server.listen(port, function ()
 {
 	console.log('PUBG Map Started!');
 });
 
 var points = [];
+var current_map = "Erangel";
 
 io.on('connection', function(socket)
-{	
+{
 	//io.sockets.emit("log", "SID: "+socket.id);
 	io.sockets.emit('map_update', points);
+	io.sockets.emit('current_map', current_map)
 
-	socket.on('disconnect', function() 
+	socket.on('disconnect', function()
 	{
 		points = removeObjectFromArrayByObjectValue(points, "sid", socket.id);
 		io.sockets.emit('map_update', points);
@@ -32,6 +45,12 @@ io.on('connection', function(socket)
 		io.sockets.emit('map_update', points);
 	});
 
+	socket.on('map', function(data)
+	{
+		current_map = data;
+
+		io.sockets.emit('current_map', current_map);
+	})
 });
 
 function removeObjectFromArrayByObjectValue(array, key, value)
